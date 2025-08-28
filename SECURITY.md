@@ -39,8 +39,6 @@ We take security vulnerabilities seriously. If you discover a security issue, pl
 
 **DO NOT** create a public GitHub issue for security vulnerabilities.
 
-Instead, please email us at: **security@cherry-pick.dev**
-
 Include the following information:
 - Description of the vulnerability
 - Steps to reproduce the issue
@@ -347,8 +345,6 @@ We conduct regular security reviews including:
 Security updates and notifications are published through:
 - **GitHub Security Advisories**
 - **Release Notes**
-- **Security Mailing List** (subscribe at security@cherry-pick.dev)
-
 ---
 
 **Last Updated**: December 2024  
