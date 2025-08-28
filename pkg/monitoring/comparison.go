@@ -4,9 +4,9 @@ package monitoring
 import (
 	"fmt"
 
-	"github.com/intelligent-algorithm/pkg/interfaces"
-	"github.com/intelligent-algorithm/pkg/types"
-	"github.com/intelligent-algorithm/pkg/utils"
+	"github.com/cherry-pick/pkg/interfaces"
+	"github.com/cherry-pick/pkg/types"
+	"github.com/cherry-pick/pkg/utils"
 )
 
 // ComparisonEngineImpl implements the ComparisonEngine interface.
@@ -28,8 +28,8 @@ func (ce *ComparisonEngineImpl) CompareReports(oldReport, newReport *types.Datab
 	// Compare table counts
 	if oldReport.Summary.TotalTables != newReport.Summary.TotalTables {
 		change := types.DatabaseChange{
-			Type:        "schema",
-			Category:    "table_count",
+			Type:     "schema",
+			Category: "table_count",
 			Description: fmt.Sprintf("Table count changed from %d to %d",
 				oldReport.Summary.TotalTables, newReport.Summary.TotalTables),
 			Impact:   utils.CalculateImpact("table_count", oldReport.Summary.TotalTables, newReport.Summary.TotalTables),
@@ -49,8 +49,8 @@ func (ce *ComparisonEngineImpl) CompareReports(oldReport, newReport *types.Datab
 		if oldTable, exists := oldTables[newTable.Name]; exists {
 			if oldTable.RowCount != newTable.RowCount {
 				change := types.DatabaseChange{
-					Type:        "data",
-					Category:    "row_count",
+					Type:     "data",
+					Category: "row_count",
 					Description: fmt.Sprintf("Table '%s' row count changed from %d to %d",
 						newTable.Name, oldTable.RowCount, newTable.RowCount),
 					Impact:        utils.CalculateRowCountImpact(oldTable.RowCount, newTable.RowCount),
@@ -63,8 +63,8 @@ func (ce *ComparisonEngineImpl) CompareReports(oldReport, newReport *types.Datab
 		} else {
 			// New table detected
 			change := types.DatabaseChange{
-				Type:        "schema",
-				Category:    "new_table",
+				Type:     "schema",
+				Category: "new_table",
 				Description: fmt.Sprintf("New table '%s' added with %d rows",
 					newTable.Name, newTable.RowCount),
 				Impact:        "medium",
@@ -84,8 +84,8 @@ func (ce *ComparisonEngineImpl) CompareReports(oldReport, newReport *types.Datab
 	for _, oldTable := range oldReport.Tables {
 		if !newTables[oldTable.Name] {
 			change := types.DatabaseChange{
-				Type:        "schema",
-				Category:    "removed_table",
+				Type:     "schema",
+				Category: "removed_table",
 				Description: fmt.Sprintf("Table '%s' was removed (had %d rows)",
 					oldTable.Name, oldTable.RowCount),
 				Impact:        "high",

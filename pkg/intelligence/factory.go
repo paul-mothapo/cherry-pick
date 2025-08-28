@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/intelligent-algorithm/pkg/analyzer"
-	"github.com/intelligent-algorithm/pkg/config"
-	"github.com/intelligent-algorithm/pkg/connector"
-	"github.com/intelligent-algorithm/pkg/insights"
-	"github.com/intelligent-algorithm/pkg/interfaces"
-	"github.com/intelligent-algorithm/pkg/monitoring"
-	"github.com/intelligent-algorithm/pkg/optimization"
-	"github.com/intelligent-algorithm/pkg/security"
+	"github.com/cherry-pick/pkg/analyzer"
+	"github.com/cherry-pick/pkg/config"
+	"github.com/cherry-pick/pkg/connector"
+	"github.com/cherry-pick/pkg/insights"
+	"github.com/cherry-pick/pkg/interfaces"
+	"github.com/cherry-pick/pkg/monitoring"
+	"github.com/cherry-pick/pkg/optimization"
+	"github.com/cherry-pick/pkg/security"
 )
 
 type ServiceBuilder struct {

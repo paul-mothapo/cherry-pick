@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/intelligent-algorithm/pkg/interfaces"
-	"github.com/intelligent-algorithm/pkg/types"
+	"github.com/cherry-pick/pkg/interfaces"
+	"github.com/cherry-pick/pkg/types"
 )
 
 type InsightGeneratorImpl struct{}
@@ -38,9 +38,9 @@ func (ig *InsightGeneratorImpl) AnalyzeLargeTables(tables []types.TableInfo) []t
 	for _, table := range sortedTables {
 		if table.RowCount > 1000000 {
 			insight := types.DatabaseInsight{
-				Type:        "performance",
-				Severity:    "medium",
-				Title:       "Large Table Detected",
+				Type:     "performance",
+				Severity: "medium",
+				Title:    "Large Table Detected",
 				Description: fmt.Sprintf("Table '%s' has %d rows, which may impact performance",
 					table.Name, table.RowCount),
 				Suggestion:     "Consider partitioning, archiving old data, or optimizing queries",
@@ -60,9 +60,9 @@ func (ig *InsightGeneratorImpl) AnalyzeMissingIndexes(tables []types.TableInfo) 
 	for _, table := range tables {
 		if table.RowCount > 10000 && len(table.Indexes) <= 1 {
 			insight := types.DatabaseInsight{
-				Type:        "performance",
-				Severity:    "high",
-				Title:       "Potential Missing Indexes",
+				Type:     "performance",
+				Severity: "high",
+				Title:    "Potential Missing Indexes",
 				Description: fmt.Sprintf("Table '%s' has %d rows but only %d indexes",
 					table.Name, table.RowCount, len(table.Indexes)),
 				Suggestion:     "Consider adding indexes on frequently queried columns",
@@ -83,9 +83,9 @@ func (ig *InsightGeneratorImpl) AnalyzeDataQuality(tables []types.TableInfo) []t
 		for _, column := range table.Columns {
 			if column.DataProfile.Quality < 0.7 {
 				insight := types.DatabaseInsight{
-					Type:        "quality",
-					Severity:    "medium",
-					Title:       "Poor Data Quality",
+					Type:     "quality",
+					Severity: "medium",
+					Title:    "Poor Data Quality",
 					Description: fmt.Sprintf("Column '%s.%s' has quality score of %.2f",
 						table.Name, column.Name, column.DataProfile.Quality),
 					Suggestion:     "Review data validation rules and consider data cleanup",
@@ -112,9 +112,9 @@ func (ig *InsightGeneratorImpl) AnalyzeRelationships(tables []types.TableInfo) [
 
 	if orphanTables > len(tables)/4 {
 		insight := types.DatabaseInsight{
-			Type:        "design",
-			Severity:    "medium",
-			Title:       "Many Isolated Tables",
+			Type:     "design",
+			Severity: "medium",
+			Title:    "Many Isolated Tables",
 			Description: fmt.Sprintf("%d tables have no relationships, which may indicate poor normalization",
 				orphanTables),
 			Suggestion:  "Review database design and consider establishing proper relationships",
@@ -138,9 +138,9 @@ func (ig *InsightGeneratorImpl) AnalyzeUnusedColumns(tables []types.TableInfo) [
 			nullRatio := float64(column.NullCount) / float64(table.RowCount)
 			if nullRatio > 0.95 {
 				insight := types.DatabaseInsight{
-					Type:        "optimization",
-					Severity:    "low",
-					Title:       "Potentially Unused Column",
+					Type:     "optimization",
+					Severity: "low",
+					Title:    "Potentially Unused Column",
 					Description: fmt.Sprintf("Column '%s.%s' has %.1f%% null values",
 						table.Name, column.Name, nullRatio*100),
 					Suggestion:     "Consider removing this column if it's truly unused",

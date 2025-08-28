@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/intelligent-algorithm/pkg/intelligence"
+	"github.com/cherry-pick/pkg/intelligence"
 )
 
 func NewDatabaseIntelligence(driverName, dataSourceName string) (*intelligence.Service, error) {

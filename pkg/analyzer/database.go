@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/intelligent-algorithm/pkg/interfaces"
-	"github.com/intelligent-algorithm/pkg/types"
-	"github.com/intelligent-algorithm/pkg/utils"
+	"github.com/cherry-pick/pkg/interfaces"
+	"github.com/cherry-pick/pkg/types"
+	"github.com/cherry-pick/pkg/utils"
 )
 
 type DatabaseAnalyzerImpl struct {

@@ -3,20 +3,21 @@ package interfaces
 
 import (
 	"time"
-	"github.com/intelligent-algorithm/pkg/types"
+
+	"github.com/cherry-pick/pkg/types"
 )
 
 // AlertManager defines the interface for handling database monitoring alerts.
 type AlertManager interface {
 	// CheckAlerts evaluates alerts against the current database report.
 	CheckAlerts(report *types.DatabaseReport) []types.MonitoringAlert
-	
+
 	// AddAlert adds a new alert condition.
 	AddAlert(alert types.MonitoringAlert) error
-	
+
 	// RemoveAlert removes an alert condition.
 	RemoveAlert(alertID string) error
-	
+
 	// GetAlerts returns all configured alerts.
 	GetAlerts() []types.MonitoringAlert
 }
@@ -31,7 +32,7 @@ type ComparisonEngine interface {
 type DataLineageTracker interface {
 	// TrackLineage builds the data lineage for all tables.
 	TrackLineage() (map[string]types.DataLineage, error)
-	
+
 	// GetLineageForTable returns lineage information for a specific table.
 	GetLineageForTable(tableName string) (*types.DataLineage, error)
 }
@@ -40,7 +41,7 @@ type DataLineageTracker interface {
 type Scheduler interface {
 	// ScheduleAnalysis allows for automated periodic analysis.
 	ScheduleAnalysis(interval time.Duration, callback func(*types.DatabaseReport)) error
-	
+
 	// Stop stops the scheduled analysis.
 	Stop() error
 }

@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/intelligent-algorithm/pkg/config"
-	"github.com/intelligent-algorithm/pkg/intelligence"
+	"github.com/cherry-pick/pkg/config"
+	"github.com/cherry-pick/pkg/intelligence"
 )
 
 func main() {

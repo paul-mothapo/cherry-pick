@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/intelligent-algorithm/pkg/interfaces"
+	"github.com/cherry-pick/pkg/interfaces"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )

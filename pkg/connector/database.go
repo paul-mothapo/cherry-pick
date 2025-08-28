@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/intelligent-algorithm/pkg/interfaces"
+	"github.com/cherry-pick/pkg/interfaces"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"

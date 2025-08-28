@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/intelligent-algorithm/pkg/interfaces"
-	"github.com/intelligent-algorithm/pkg/types"
+	"github.com/cherry-pick/pkg/interfaces"
+	"github.com/cherry-pick/pkg/types"
 )
 
 type ReportGeneratorImpl struct{}

@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/intelligent-algorithm/pkg/intelligence"
+	"github.com/cherry-pick/pkg/intelligence"
 )
 
 func main() {

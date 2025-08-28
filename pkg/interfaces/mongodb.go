@@ -3,7 +3,7 @@ package interfaces
 import (
 	"context"
 
-	"github.com/intelligent-algorithm/pkg/types"
+	"github.com/cherry-pick/pkg/types"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 

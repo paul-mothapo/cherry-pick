@@ -81,7 +81,7 @@ pkg/
 
 ```bash
 go mod init your-project
-go get github.com/intelligent-algorithm
+go get github.com/cherry-pick
 ```
 
 ## Quick Start
@@ -93,7 +93,7 @@ package main
 
 import (
     "log"
-    "github.com/intelligent-algorithm/pkg/intelligence"
+    "github.com/cherry-pick/pkg/intelligence"
 )
 
 func main() {

@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/intelligent-algorithm/pkg/config"
-	"github.com/intelligent-algorithm/pkg/interfaces"
-	"github.com/intelligent-algorithm/pkg/types"
+	"github.com/cherry-pick/pkg/config"
+	"github.com/cherry-pick/pkg/interfaces"
+	"github.com/cherry-pick/pkg/types"
 )
 
 type MongoService struct {

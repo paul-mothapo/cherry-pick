@@ -3,8 +3,8 @@ package optimization
 import (
 	"strings"
 
-	"github.com/intelligent-algorithm/pkg/interfaces"
-	"github.com/intelligent-algorithm/pkg/types"
+	"github.com/cherry-pick/pkg/interfaces"
+	"github.com/cherry-pick/pkg/types"
 )
 
 type QueryOptimizerImpl struct{}
@@ -68,7 +68,7 @@ func (qo *QueryOptimizerImpl) ValidateQuery(query string) error {
 
 	queryLower := strings.ToLower(query)
 	validStarts := []string{"select", "insert", "update", "delete", "create", "alter", "drop"}
-	
+
 	isValid := false
 	for _, start := range validStarts {
 		if strings.HasPrefix(queryLower, start) {

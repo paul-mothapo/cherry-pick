@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/intelligent-algorithm/pkg/interfaces"
-	"github.com/intelligent-algorithm/pkg/types"
+	"github.com/cherry-pick/pkg/interfaces"
+	"github.com/cherry-pick/pkg/types"
 )
 
 // SecurityAnalyzerImpl implements the SecurityAnalyzer interface.
@@ -51,9 +51,9 @@ func (sa *SecurityAnalyzerImpl) checkPIIColumns(tables []types.TableInfo) []type
 		for _, column := range table.Columns {
 			if sa.IsPotentialPII(column.Name, column.DataProfile.Pattern) {
 				issue := types.SecurityIssue{
-					Type:        "privacy",
-					Severity:    "high",
-					Title:       "Potential PII Data",
+					Type:     "privacy",
+					Severity: "high",
+					Title:    "Potential PII Data",
 					Description: fmt.Sprintf("Column '%s.%s' may contain personally identifiable information",
 						table.Name, column.Name),
 					Recommendation:  "Consider encryption, masking, or access controls",
@@ -74,9 +74,9 @@ func (sa *SecurityAnalyzerImpl) checkUnindexedTables(tables []types.TableInfo) [
 	for _, table := range tables {
 		if table.RowCount > 1000 && len(table.Indexes) == 0 {
 			issue := types.SecurityIssue{
-				Type:        "performance_security",
-				Severity:    "medium",
-				Title:       "Unindexed Large Table",
+				Type:     "performance_security",
+				Severity: "medium",
+				Title:    "Unindexed Large Table",
 				Description: fmt.Sprintf("Table '%s' has no indexes, making it vulnerable to performance attacks",
 					table.Name),
 				Recommendation:  "Add appropriate indexes to prevent table scanning attacks",
@@ -115,9 +115,9 @@ func (sa *SecurityAnalyzerImpl) DetectVulnerabilities(tables []types.TableInfo) 
 		for _, sensitive := range sensitiveTableNames {
 			if strings.Contains(tableLower, sensitive) && len(table.Indexes) == 0 {
 				issue := types.SecurityIssue{
-					Type:        "access_control",
-					Severity:    "high",
-					Title:       "Sensitive Table Without Proper Indexing",
+					Type:     "access_control",
+					Severity: "high",
+					Title:    "Sensitive Table Without Proper Indexing",
 					Description: fmt.Sprintf("Table '%s' appears to contain sensitive data but lacks proper indexing",
 						table.Name),
 					Recommendation:  "Implement proper indexing and access controls for sensitive data",
@@ -132,9 +132,9 @@ func (sa *SecurityAnalyzerImpl) DetectVulnerabilities(tables []types.TableInfo) 
 		for _, column := range table.Columns {
 			if sa.isPotentialPasswordColumn(column) {
 				issue := types.SecurityIssue{
-					Type:        "encryption",
-					Severity:    "critical",
-					Title:       "Potential Plain Text Password Storage",
+					Type:     "encryption",
+					Severity: "critical",
+					Title:    "Potential Plain Text Password Storage",
 					Description: fmt.Sprintf("Column '%s.%s' might be storing passwords in plain text",
 						table.Name, column.Name),
 					Recommendation:  "Ensure passwords are properly hashed and salted",
