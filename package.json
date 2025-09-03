@@ -1,0 +1,6 @@
+{
+  "name": "cherry-pick",
+  "version": "0.0.0",
+  "description": "Database analysis and optimization tool",
+  "private": true
+}
