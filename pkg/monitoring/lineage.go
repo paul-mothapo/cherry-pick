@@ -1,4 +1,3 @@
-// Package monitoring provides data lineage tracking functionality.
 package monitoring
 
 import (
@@ -9,13 +8,11 @@ import (
 	"github.com/cherry-pick/pkg/types"
 )
 
-// DataLineageTrackerImpl implements the DataLineageTracker interface.
 type DataLineageTrackerImpl struct {
 	analyzer     interfaces.DatabaseAnalyzer
-	dependencies map[string][]string // table -> dependent tables
+	dependencies map[string][]string
 }
 
-// NewDataLineageTracker creates a new data lineage tracker.
 func NewDataLineageTracker(analyzer interfaces.DatabaseAnalyzer) interfaces.DataLineageTracker {
 	return &DataLineageTrackerImpl{
 		analyzer:     analyzer,
@@ -23,24 +20,20 @@ func NewDataLineageTracker(analyzer interfaces.DatabaseAnalyzer) interfaces.Data
 	}
 }
 
-// TrackLineage builds the data lineage for all tables.
 func (dlt *DataLineageTrackerImpl) TrackLineage() (map[string]types.DataLineage, error) {
 	lineage := make(map[string]types.DataLineage)
 
-	// Get all tables
 	tables, err := dlt.analyzer.AnalyzeTables()
 	if err != nil {
 		return nil, fmt.Errorf("failed to analyze tables: %w", err)
 	}
 
-	// Build lineage based on foreign key relationships
 	for _, table := range tables {
 		tableLineage := types.DataLineage{
 			TableName:   table.Name,
 			LastUpdated: time.Now(),
 		}
 
-		// Find upstream dependencies (tables this table references)
 		for _, relationship := range table.Relationships {
 			if relationship.Type == "foreign_key" {
 				dep := types.LineageDependency{
@@ -55,7 +48,6 @@ func (dlt *DataLineageTrackerImpl) TrackLineage() (map[string]types.DataLineage,
 		lineage[table.Name] = tableLineage
 	}
 
-	// Build downstream dependencies
 	for tableName, tableLineage := range lineage {
 		for _, upstream := range tableLineage.UpstreamDeps {
 			if upstreamLineage, exists := lineage[upstream.TableName]; exists {
@@ -72,7 +64,6 @@ func (dlt *DataLineageTrackerImpl) TrackLineage() (map[string]types.DataLineage,
 	return lineage, nil
 }
 
-// GetLineageForTable returns lineage information for a specific table.
 func (dlt *DataLineageTrackerImpl) GetLineageForTable(tableName string) (*types.DataLineage, error) {
 	lineage, err := dlt.TrackLineage()
 	if err != nil {

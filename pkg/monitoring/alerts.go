@@ -1,4 +1,3 @@
-// Package monitoring provides database monitoring and alerting functionality.
 package monitoring
 
 import (
@@ -9,19 +8,17 @@ import (
 	"github.com/cherry-pick/pkg/types"
 )
 
-// AlertManagerImpl implements the AlertManager interface.
 type AlertManagerImpl struct {
 	alerts []types.MonitoringAlert
 }
 
-// NewAlertManager creates a new alert manager with default alerts.
 func NewAlertManager() interfaces.AlertManager {
 	defaultAlerts := []types.MonitoringAlert{
 		{
 			ID:        "large_table_growth",
 			Name:      "Large Table Growth",
 			Condition: "table_growth_rate > threshold",
-			Threshold: 0.5, // 50% growth
+			Threshold: 0.5,
 			Severity:  "high",
 		},
 		{
@@ -43,7 +40,6 @@ func NewAlertManager() interfaces.AlertManager {
 	return &AlertManagerImpl{alerts: defaultAlerts}
 }
 
-// CheckAlerts evaluates alerts against the current database report.
 func (am *AlertManagerImpl) CheckAlerts(report *types.DatabaseReport) []types.MonitoringAlert {
 	var triggeredAlerts []types.MonitoringAlert
 
@@ -65,7 +61,6 @@ func (am *AlertManagerImpl) CheckAlerts(report *types.DatabaseReport) []types.Mo
 	return triggeredAlerts
 }
 
-// checkDataQualityAlert checks for data quality degradation.
 func (am *AlertManagerImpl) checkDataQualityAlert(alert *types.MonitoringAlert, report *types.DatabaseReport) bool {
 	for _, table := range report.Tables {
 		for _, column := range table.Columns {
@@ -81,7 +76,6 @@ func (am *AlertManagerImpl) checkDataQualityAlert(alert *types.MonitoringAlert, 
 	return false
 }
 
-// checkMissingIndexesAlert checks for missing indexes on large tables.
 func (am *AlertManagerImpl) checkMissingIndexesAlert(alert *types.MonitoringAlert, report *types.DatabaseReport) bool {
 	for _, table := range report.Tables {
 		if float64(table.RowCount) > alert.Threshold && len(table.Indexes) <= 1 {
@@ -95,9 +89,7 @@ func (am *AlertManagerImpl) checkMissingIndexesAlert(alert *types.MonitoringAler
 	return false
 }
 
-// AddAlert adds a new alert condition.
 func (am *AlertManagerImpl) AddAlert(alert types.MonitoringAlert) error {
-	// Check if alert with same ID already exists
 	for _, existingAlert := range am.alerts {
 		if existingAlert.ID == alert.ID {
 			return fmt.Errorf("alert with ID %s already exists", alert.ID)
@@ -108,7 +100,6 @@ func (am *AlertManagerImpl) AddAlert(alert types.MonitoringAlert) error {
 	return nil
 }
 
-// RemoveAlert removes an alert condition.
 func (am *AlertManagerImpl) RemoveAlert(alertID string) error {
 	for i, alert := range am.alerts {
 		if alert.ID == alertID {
@@ -119,9 +110,7 @@ func (am *AlertManagerImpl) RemoveAlert(alertID string) error {
 	return fmt.Errorf("alert with ID %s not found", alertID)
 }
 
-// GetAlerts returns all configured alerts.
 func (am *AlertManagerImpl) GetAlerts() []types.MonitoringAlert {
-	// Return a copy to prevent external modification
 	alerts := make([]types.MonitoringAlert, len(am.alerts))
 	copy(alerts, am.alerts)
 	return alerts

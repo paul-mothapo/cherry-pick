@@ -116,6 +116,10 @@ func (s *Service) OptimizeQuery(query string) (*types.OptimizationSuggestion, er
 	return s.optimizer.AnalyzeQuery(query)
 }
 
+func (s *Service) GetMongoService() *MongoService {
+	return s.mongoService
+}
+
 func (s *Service) CheckAlerts() ([]types.MonitoringAlert, error) {
 	if s.mongoService != nil {
 		ctx := context.Background()

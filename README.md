@@ -24,6 +24,24 @@ The Enterprise Database Intelligence System is a modular Go application that pro
 
 ## Quick Start
 
+### Web UI (New!)
+
+**Development:**
+```bash
+# Terminal 1 - Start UI development server
+cd web
+npm install
+npm run dev
+
+# Terminal 2 - Start Go server
+go mod tidy
+go run cmd/server/main.go
+```
+
+The web interface will be available at `http://localhost:3000`
+
+### Command Line
+
 ```go
 service, err := intelligence.CreateSimpleService("mysql", "user:pass@tcp(localhost:3306)/db")
 if err != nil {

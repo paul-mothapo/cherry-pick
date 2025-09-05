@@ -1,4 +1,3 @@
-// Package config provides environment variable configuration management.
 package config
 
 import (
@@ -7,7 +6,6 @@ import (
 	"strings"
 )
 
-// DatabaseConfig represents database connection configuration from environment variables.
 type DatabaseConfig struct {
 	URL      string
 	Type     string
@@ -19,25 +17,21 @@ type DatabaseConfig struct {
 	SSLMode  string
 }
 
-// LoadDatabaseConfig loads database configuration from environment variables.
 func LoadDatabaseConfig() (*DatabaseConfig, error) {
 	config := &DatabaseConfig{}
 
-	// First, check for a complete DATABASE_URL
 	if url := os.Getenv("DATABASE_URL"); url != "" {
 		config.URL = url
 		config.Type = detectDatabaseType(url)
 		return config, nil
 	}
 
-	// Check for MongoDB URL
 	if mongoURL := os.Getenv("MONGODB_URL"); mongoURL != "" {
 		config.URL = mongoURL
 		config.Type = "mongodb"
 		return config, nil
 	}
 
-	// Check for individual database components
 	config.Type = strings.ToLower(os.Getenv("DB_TYPE"))
 	config.Host = getEnvOrDefault("DB_HOST", "localhost")
 	config.Port = os.Getenv("DB_PORT")
@@ -46,7 +40,6 @@ func LoadDatabaseConfig() (*DatabaseConfig, error) {
 	config.Password = os.Getenv("DB_PASSWORD")
 	config.SSLMode = getEnvOrDefault("DB_SSLMODE", "disable")
 
-	// Build connection string if we have enough info
 	if config.Type != "" && config.Database != "" {
 		var err error
 		config.URL, err = buildConnectionString(config)
@@ -59,7 +52,6 @@ func LoadDatabaseConfig() (*DatabaseConfig, error) {
 	return nil, fmt.Errorf("no database configuration found in environment variables")
 }
 
-// GetAllSupportedConfigs returns examples of all supported environment variable configurations.
 func GetAllSupportedConfigs() map[string][]string {
 	return map[string][]string{
 		"Complete URLs": {
@@ -93,7 +85,6 @@ func GetAllSupportedConfigs() map[string][]string {
 	}
 }
 
-// PrintConfigHelp prints helpful information about environment variable configuration.
 func PrintConfigHelp() {
 	fmt.Println("=== Database Configuration Help ===")
 	fmt.Println("You can configure database connections using environment variables in several ways:")
@@ -121,8 +112,6 @@ func PrintConfigHelp() {
 	fmt.Println("  $env:DB_PASSWORD = \"password\"")
 	fmt.Println("  go run examples/real-database-example.go")
 }
-
-// Helper functions
 
 func detectDatabaseType(url string) string {
 	url = strings.ToLower(url)

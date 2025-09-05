@@ -1,9 +1,6 @@
 # Generated analysis reports
 data/
 
-# node modules
-node_modules/
-
 # Go build artifacts
 *.exe
 *.exe~

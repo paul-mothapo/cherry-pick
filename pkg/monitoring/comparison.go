@@ -1,4 +1,3 @@
-// Package monitoring provides database comparison functionality.
 package monitoring
 
 import (
@@ -9,15 +8,12 @@ import (
 	"github.com/cherry-pick/pkg/utils"
 )
 
-// ComparisonEngineImpl implements the ComparisonEngine interface.
 type ComparisonEngineImpl struct{}
 
-// NewComparisonEngine creates a new comparison engine instance.
 func NewComparisonEngine() interfaces.ComparisonEngine {
 	return &ComparisonEngineImpl{}
 }
 
-// CompareReports compares two database reports to identify changes.
 func (ce *ComparisonEngineImpl) CompareReports(oldReport, newReport *types.DatabaseReport) *types.ComparisonReport {
 	comparison := &types.ComparisonReport{
 		OldAnalysisTime: oldReport.AnalysisTime,
@@ -25,7 +21,6 @@ func (ce *ComparisonEngineImpl) CompareReports(oldReport, newReport *types.Datab
 		Changes:         []types.DatabaseChange{},
 	}
 
-	// Compare table counts
 	if oldReport.Summary.TotalTables != newReport.Summary.TotalTables {
 		change := types.DatabaseChange{
 			Type:     "schema",
@@ -39,7 +34,6 @@ func (ce *ComparisonEngineImpl) CompareReports(oldReport, newReport *types.Datab
 		comparison.Changes = append(comparison.Changes, change)
 	}
 
-	// Compare row counts for existing tables
 	oldTables := make(map[string]types.TableInfo)
 	for _, table := range oldReport.Tables {
 		oldTables[table.Name] = table
@@ -61,7 +55,6 @@ func (ce *ComparisonEngineImpl) CompareReports(oldReport, newReport *types.Datab
 				comparison.Changes = append(comparison.Changes, change)
 			}
 		} else {
-			// New table detected
 			change := types.DatabaseChange{
 				Type:     "schema",
 				Category: "new_table",
@@ -75,7 +68,6 @@ func (ce *ComparisonEngineImpl) CompareReports(oldReport, newReport *types.Datab
 		}
 	}
 
-	// Check for removed tables
 	newTables := make(map[string]bool)
 	for _, table := range newReport.Tables {
 		newTables[table.Name] = true
@@ -96,13 +88,11 @@ func (ce *ComparisonEngineImpl) CompareReports(oldReport, newReport *types.Datab
 		}
 	}
 
-	// Generate summary
 	comparison.Summary = ce.generateChangeSummary(comparison.Changes)
 
 	return comparison
 }
 
-// generateChangeSummary creates a summary of changes.
 func (ce *ComparisonEngineImpl) generateChangeSummary(changes []types.DatabaseChange) types.ChangeSummary {
 	summary := types.ChangeSummary{
 		TotalChanges: len(changes),

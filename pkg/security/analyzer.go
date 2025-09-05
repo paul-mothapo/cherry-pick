@@ -1,4 +1,3 @@
-// Package security provides database security analysis functionality.
 package security
 
 import (
@@ -9,41 +8,33 @@ import (
 	"github.com/cherry-pick/pkg/types"
 )
 
-// SecurityAnalyzerImpl implements the SecurityAnalyzer interface.
 type SecurityAnalyzerImpl struct {
 	analyzer interfaces.DatabaseAnalyzer
 }
 
-// NewSecurityAnalyzer creates a new security analyzer instance.
 func NewSecurityAnalyzer(analyzer interfaces.DatabaseAnalyzer) interfaces.SecurityAnalyzer {
 	return &SecurityAnalyzerImpl{
 		analyzer: analyzer,
 	}
 }
 
-// AnalyzeSecurity performs security analysis on the database.
 func (sa *SecurityAnalyzerImpl) AnalyzeSecurity() ([]types.SecurityIssue, error) {
 	var issues []types.SecurityIssue
 
-	// Get all tables for analysis
 	tables, err := sa.analyzer.AnalyzeTables()
 	if err != nil {
 		return nil, fmt.Errorf("failed to analyze tables: %w", err)
 	}
 
-	// Check for potential PII columns
 	issues = append(issues, sa.checkPIIColumns(tables)...)
 
-	// Check for unindexed large tables (potential for data exposure)
 	issues = append(issues, sa.checkUnindexedTables(tables)...)
 
-	// Detect other vulnerabilities
 	issues = append(issues, sa.DetectVulnerabilities(tables)...)
 
 	return issues, nil
 }
 
-// checkPIIColumns identifies columns that may contain personally identifiable information.
 func (sa *SecurityAnalyzerImpl) checkPIIColumns(tables []types.TableInfo) []types.SecurityIssue {
 	var issues []types.SecurityIssue
 
@@ -67,7 +58,6 @@ func (sa *SecurityAnalyzerImpl) checkPIIColumns(tables []types.TableInfo) []type
 	return issues
 }
 
-// checkUnindexedTables identifies large tables without proper indexing.
 func (sa *SecurityAnalyzerImpl) checkUnindexedTables(tables []types.TableInfo) []types.SecurityIssue {
 	var issues []types.SecurityIssue
 
@@ -89,7 +79,6 @@ func (sa *SecurityAnalyzerImpl) checkUnindexedTables(tables []types.TableInfo) [
 	return issues
 }
 
-// IsPotentialPII checks if a column might contain personally identifiable information.
 func (sa *SecurityAnalyzerImpl) IsPotentialPII(columnName, pattern string) bool {
 	piiPatterns := []string{"email", "phone", "ssn", "social", "address", "name", "first_name", "last_name", "password"}
 	columnLower := strings.ToLower(columnName)
@@ -103,11 +92,9 @@ func (sa *SecurityAnalyzerImpl) IsPotentialPII(columnName, pattern string) bool 
 	return pattern == "Email pattern" || pattern == "Phone number pattern"
 }
 
-// DetectVulnerabilities identifies potential security vulnerabilities.
 func (sa *SecurityAnalyzerImpl) DetectVulnerabilities(tables []types.TableInfo) []types.SecurityIssue {
 	var issues []types.SecurityIssue
 
-	// Check for tables with weak naming conventions that might expose sensitive data
 	for _, table := range tables {
 		tableLower := strings.ToLower(table.Name)
 		sensitiveTableNames := []string{"user", "account", "payment", "credit", "admin", "password"}
@@ -128,7 +115,6 @@ func (sa *SecurityAnalyzerImpl) DetectVulnerabilities(tables []types.TableInfo) 
 			}
 		}
 
-		// Check for columns that might store passwords in plain text
 		for _, column := range table.Columns {
 			if sa.isPotentialPasswordColumn(column) {
 				issue := types.SecurityIssue{
@@ -148,14 +134,12 @@ func (sa *SecurityAnalyzerImpl) DetectVulnerabilities(tables []types.TableInfo) 
 	return issues
 }
 
-// isPotentialPasswordColumn checks if a column might be storing passwords.
 func (sa *SecurityAnalyzerImpl) isPotentialPasswordColumn(column types.ColumnInfo) bool {
 	columnLower := strings.ToLower(column.Name)
 	passwordIndicators := []string{"password", "passwd", "pwd", "pass"}
 
 	for _, indicator := range passwordIndicators {
 		if strings.Contains(columnLower, indicator) {
-			// Check if it's likely plain text (too short for hashed passwords)
 			if column.MaxLength > 0 && column.MaxLength < 32 {
 				return true
 			}

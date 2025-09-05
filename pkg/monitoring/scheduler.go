@@ -1,4 +1,3 @@
-// Package monitoring provides scheduling functionality for automated analysis.
 package monitoring
 
 import (
@@ -10,7 +9,6 @@ import (
 	"github.com/cherry-pick/pkg/types"
 )
 
-// SchedulerImpl implements the Scheduler interface.
 type SchedulerImpl struct {
 	analyzer interfaces.DatabaseAnalyzer
 	reporter interfaces.ReportGenerator
@@ -21,7 +19,6 @@ type SchedulerImpl struct {
 	mutex    sync.RWMutex
 }
 
-// NewScheduler creates a new scheduler instance.
 func NewScheduler(analyzer interfaces.DatabaseAnalyzer, reporter interfaces.ReportGenerator, insights interfaces.InsightGenerator) interfaces.Scheduler {
 	return &SchedulerImpl{
 		analyzer: analyzer,
@@ -31,7 +28,6 @@ func NewScheduler(analyzer interfaces.DatabaseAnalyzer, reporter interfaces.Repo
 	}
 }
 
-// ScheduleAnalysis allows for automated periodic analysis.
 func (s *SchedulerImpl) ScheduleAnalysis(interval time.Duration, callback func(*types.DatabaseReport)) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -55,7 +51,6 @@ func (s *SchedulerImpl) ScheduleAnalysis(interval time.Duration, callback func(*
 			case <-s.ticker.C:
 				report, err := s.generateReport()
 				if err != nil {
-					// Log error but continue scheduling
 					fmt.Printf("Scheduled analysis failed: %v\n", err)
 					continue
 				}
@@ -69,7 +64,6 @@ func (s *SchedulerImpl) ScheduleAnalysis(interval time.Duration, callback func(*
 	return nil
 }
 
-// Stop stops the scheduled analysis.
 func (s *SchedulerImpl) Stop() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -85,32 +79,24 @@ func (s *SchedulerImpl) Stop() error {
 	return nil
 }
 
-// generateReport creates a complete database report.
 func (s *SchedulerImpl) generateReport() (*types.DatabaseReport, error) {
-	// Analyze all tables
 	tables, err := s.analyzer.AnalyzeTables()
 	if err != nil {
 		return nil, fmt.Errorf("failed to analyze tables: %w", err)
 	}
 
-	// Generate insights
 	insights := s.insights.GenerateInsights(tables)
-
-	// Generate summary
 	summary := s.reporter.GenerateSummary(tables)
-
-	// Generate recommendations
 	recommendations := s.reporter.GenerateRecommendations(tables, insights)
 
 	report := &types.DatabaseReport{
 		DatabaseName:    "Scheduled Analysis",
-		DatabaseType:    "Unknown", // Would need database connector
+		DatabaseType:    "Unknown",
 		AnalysisTime:    time.Now(),
 		Summary:         summary,
 		Tables:          tables,
 		Insights:        insights,
 		Recommendations: recommendations,
-		// PerformanceMetrics would need performance analyzer
 	}
 
 	return report, nil

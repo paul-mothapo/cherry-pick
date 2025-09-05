@@ -1,4 +1,3 @@
-// Package connector provides database connection functionality.
 package connector
 
 import (
@@ -19,7 +18,6 @@ type DatabaseConnectorImpl struct {
 	dataSourceName string
 }
 
-// NewDatabaseConnector creates a new database connector instance.
 func NewDatabaseConnector(driverName, dataSourceName string) interfaces.DatabaseConnector {
 	return &DatabaseConnectorImpl{
 		driverName:     driverName,
@@ -27,7 +25,6 @@ func NewDatabaseConnector(driverName, dataSourceName string) interfaces.Database
 	}
 }
 
-// Connect establishes a connection to the database.
 func (dc *DatabaseConnectorImpl) Connect() error {
 	db, err := sql.Open(dc.driverName, dc.dataSourceName)
 	if err != nil {

@@ -51,6 +51,10 @@ func NewMongoService(
 	}
 }
 
+func (ms *MongoService) GetConnector() interfaces.MongoConnector {
+	return ms.connector
+}
+
 func (ms *MongoService) AnalyzeDatabase(ctx context.Context) (*types.DatabaseReport, error) {
 	return ms.analyzer.AnalyzeDatabase(ctx)
 }
