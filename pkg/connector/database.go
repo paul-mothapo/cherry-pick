@@ -11,7 +11,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// DatabaseConnectorImpl implements the DatabaseConnector interface.
 type DatabaseConnectorImpl struct {
 	db             *sql.DB
 	driverName     string
@@ -39,7 +38,6 @@ func (dc *DatabaseConnectorImpl) Connect() error {
 	return nil
 }
 
-// Close closes the database connection.
 func (dc *DatabaseConnectorImpl) Close() error {
 	if dc.db == nil {
 		return nil
@@ -50,7 +48,6 @@ func (dc *DatabaseConnectorImpl) Close() error {
 	return err
 }
 
-// Ping tests the database connection.
 func (dc *DatabaseConnectorImpl) Ping() error {
 	if dc.db == nil {
 		return fmt.Errorf("database connection is not established")
@@ -58,12 +55,10 @@ func (dc *DatabaseConnectorImpl) Ping() error {
 	return dc.db.Ping()
 }
 
-// GetDB returns the underlying database connection.
 func (dc *DatabaseConnectorImpl) GetDB() *sql.DB {
 	return dc.db
 }
 
-// GetDatabaseName returns the name of the database.
 func (dc *DatabaseConnectorImpl) GetDatabaseName() (string, error) {
 	if dc.db == nil {
 		return "", fmt.Errorf("database connection is not established")
@@ -93,7 +88,6 @@ func (dc *DatabaseConnectorImpl) GetDatabaseName() (string, error) {
 	return "Unknown", nil
 }
 
-// GetDatabaseType returns the type of the database.
 func (dc *DatabaseConnectorImpl) GetDatabaseType() string {
 	return dc.driverName
 }

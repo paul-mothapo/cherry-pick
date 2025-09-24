@@ -4,13 +4,17 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/cherry-pick/pkg/api/loadbalancer"
+	"github.com/cherry-pick/pkg/loadbalancer"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
 type Server struct {
-	router *gin.Engine
-	port   string
+	router        *gin.Engine
+	port          string
+	loadBalancer  *loadbalancer.LoadBalancer
+	urlAnalyzer   *loadbalancer.URLAnalyzer
 }
 
 func NewServer(port string) *Server {
@@ -25,10 +29,19 @@ func NewServer(port string) *Server {
 		MaxAge:           12 * time.Hour,
 	}))
 
+	// Initialize load balancer
+	lb := loadbalancer.NewLoadBalancer("./reports")
+	analyzer := loadbalancer.NewURLAnalyzer()
+
 	server := &Server{
-		router: router,
-		port:   port,
+		router:       router,
+		port:         port,
+		loadBalancer: lb,
+		urlAnalyzer:  analyzer,
 	}
+
+	// Initialize analytics
+	InitializeAnalytics()
 
 	server.setupRoutes()
 	return server
@@ -89,6 +102,25 @@ func (s *Server) setupRoutes() {
 			collections.GET("/:id/:collection/data", s.getCollectionData)
 			collections.GET("/:id/:collection/stats", s.getCollectionStats)
 			collections.POST("/:id/:collection/search", s.searchCollection)
+		}
+
+		// @Load Balancer routes
+		loadBalancerService := loadbalancer.NewService(s.loadBalancer, s.urlAnalyzer)
+		loadBalancerHandler := loadbalancer.NewHandler(loadBalancerService)
+		loadbalancer.SetupRoutes(api, loadBalancerHandler)
+
+		// @Analytics routes
+		analytics := api.Group("/analytics")
+		{
+			analytics.POST("/track/pageview", s.trackPageView)
+			analytics.POST("/track/behavior", s.trackBehavioralPattern)
+			analytics.GET("/realtime", s.getRealTimeAnalytics)
+			analytics.GET("/journey/:sessionId", s.getUserJourney)
+			analytics.GET("/funnel", s.getFunnelAnalysis)
+			analytics.GET("/insights", s.getAnalyticsInsights)
+			analytics.GET("/report", s.getAnalyticsReport)
+			analytics.GET("/dashboard", s.getAnalyticsDashboard)
+			analytics.GET("/stream", s.subscribeToRealTimeAnalytics)
 		}
 	}
 
