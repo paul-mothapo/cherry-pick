@@ -1,4 +1,4 @@
-package analyzer
+package services
 
 import (
 	"context"
@@ -7,66 +7,95 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/cherry-pick/pkg/interfaces"
-	"github.com/cherry-pick/pkg/types"
+	"github.com/cherry-pick/pkg/analyzer/core"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type MongoAnalyzerImpl struct {
-	connector interfaces.MongoConnector
+type MongoAnalyzerService struct {
+	connector   core.MongoConnector
+	calculator  core.AnalysisCalculator
+	aggregator  core.AnalysisAggregator
+	validator   core.AnalysisValidator
 }
 
-func NewMongoAnalyzer(connector interfaces.MongoConnector) interfaces.MongoAnalyzer {
-	return &MongoAnalyzerImpl{
-		connector: connector,
+func NewMongoAnalyzerService(
+	connector core.MongoConnector,
+	calculator core.AnalysisCalculator,
+	aggregator core.AnalysisAggregator,
+	validator core.AnalysisValidator,
+) *MongoAnalyzerService {
+	return &MongoAnalyzerService{
+		connector:  connector,
+		calculator: calculator,
+		aggregator: aggregator,
+		validator:  validator,
 	}
 }
 
-func (ma *MongoAnalyzerImpl) AnalyzeDatabase(ctx context.Context) (*types.DatabaseReport, error) {
-	log.Println("Starting comprehensive MongoDB analysis...")
-
-	dbStats, err := ma.GetDatabaseStats(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get database stats: %w", err)
+func (mas *MongoAnalyzerService) AnalyzeDatabase(ctx context.Context, request core.AnalysisRequest) (*core.AnalysisResult, error) {
+	if err := mas.validator.ValidateRequest(request); err != nil {
+		return nil, fmt.Errorf("invalid analysis request: %w", err)
 	}
 
-	collections, err := ma.AnalyzeCollections(ctx)
+	if !mas.connector.IsConnected() {
+		return nil, fmt.Errorf("MongoDB not connected")
+	}
+
+	startTime := time.Now()
+	log.Printf("Starting MongoDB analysis for %s", request.DatabaseType)
+
+	collections, err := mas.AnalyzeCollections(ctx, request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to analyze collections: %w", err)
 	}
 
-	tables := ma.convertCollectionsToTables(collections)
-	insights := ma.generateInsights(collections, dbStats)
-	summary := ma.generateSummary(collections, dbStats)
-	recommendations := ma.generateRecommendations(insights)
-
-	report := &types.DatabaseReport{
-		DatabaseName:    ma.connector.GetDatabaseName(),
-		DatabaseType:    "mongodb",
-		AnalysisTime:    time.Now(),
-		Summary:         summary,
-		Tables:          tables,
-		Insights:        insights,
-		Recommendations: recommendations,
+	dbStats, err := mas.GetDatabaseStats(ctx, request)
+	if err != nil {
+		log.Printf("Warning: Could not get database stats: %v", err)
 	}
 
-	log.Println("MongoDB analysis completed successfully")
-	return report, nil
+	tables := mas.convertCollectionsToTables(collections)
+	summary := mas.generateSummary(collections, dbStats)
+	insights := mas.generateInsights(collections, dbStats)
+	recommendations := mas.generateRecommendations(insights)
+
+	var performance *core.PerformanceMetrics
+	if request.Options.IncludePerformance {
+		performance, err = mas.GetPerformanceMetrics(ctx, request)
+		if err != nil {
+			log.Printf("Warning: Could not get performance metrics: %v", err)
+		}
+	}
+
+	result := &core.AnalysisResult{
+		ID:             generateAnalysisID(),
+		DatabaseName:   mas.connector.GetDatabaseName(),
+		DatabaseType:   request.DatabaseType,
+		AnalysisTime:   time.Now(),
+		Summary:        summary,
+		Tables:         tables,
+		Insights:       insights,
+		Recommendations: recommendations,
+		Performance:    performance,
+	}
+
+	log.Printf("MongoDB analysis completed in %v", time.Since(startTime))
+	return result, nil
 }
 
-func (ma *MongoAnalyzerImpl) AnalyzeCollections(ctx context.Context) ([]types.MongoCollectionInfo, error) {
-	collectionNames, err := ma.GetCollectionNames(ctx)
+func (mas *MongoAnalyzerService) AnalyzeCollections(ctx context.Context, request core.AnalysisRequest) ([]core.MongoCollectionInfo, error) {
+	collectionNames, err := mas.GetCollectionNames(ctx, request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get collection names: %w", err)
 	}
 
-	var collections []types.MongoCollectionInfo
+	var collections []core.MongoCollectionInfo
 	for _, name := range collectionNames {
 		log.Printf("Analyzing collection: %s", name)
 
-		collection, err := ma.AnalyzeCollection(ctx, name)
+		collection, err := mas.AnalyzeCollection(ctx, name, request)
 		if err != nil {
 			log.Printf("Warning: Failed to analyze collection %s: %v", name, err)
 			continue
@@ -77,12 +106,8 @@ func (ma *MongoAnalyzerImpl) AnalyzeCollections(ctx context.Context) ([]types.Mo
 	return collections, nil
 }
 
-func (ma *MongoAnalyzerImpl) AnalyzeCollection(ctx context.Context, collectionName string) (*types.MongoCollectionInfo, error) {
-	db := ma.connector.GetDatabase("")
-	if db == nil {
-		return nil, fmt.Errorf("database connection not available")
-	}
-
+func (mas *MongoAnalyzerService) AnalyzeCollection(ctx context.Context, collectionName string, request core.AnalysisRequest) (*core.MongoCollectionInfo, error) {
+	db := mas.connector.GetDatabase().(*mongo.Database)
 	collection := db.Collection(collectionName)
 
 	var stats bson.M
@@ -91,7 +116,7 @@ func (ma *MongoAnalyzerImpl) AnalyzeCollection(ctx context.Context, collectionNa
 		return nil, fmt.Errorf("failed to get collection stats: %w", err)
 	}
 
-	collInfo := &types.MongoCollectionInfo{
+	collInfo := &core.MongoCollectionInfo{
 		Name:         collectionName,
 		LastModified: time.Now(),
 	}
@@ -118,52 +143,60 @@ func (ma *MongoAnalyzerImpl) AnalyzeCollection(ctx context.Context, collectionNa
 		collInfo.StorageSize = int64(storageSize32)
 	}
 
-	indexes, err := ma.GetIndexes(ctx, collectionName)
-	if err != nil {
-		log.Printf("Warning: Could not get indexes for %s: %v", collectionName, err)
+	if request.Options.IncludeIndexes {
+		indexes, err := mas.GetIndexes(ctx, collectionName, request)
+		if err != nil {
+			log.Printf("Warning: Could not get indexes for %s: %v", collectionName, err)
+		}
+		collInfo.Indexes = indexes
 	}
-	collInfo.Indexes = indexes
 
-	fields, err := ma.AnalyzeSchema(ctx, collectionName, 100)
-	if err != nil {
-		log.Printf("Warning: Could not analyze schema for %s: %v", collectionName, err)
+	if request.Options.IncludeSchema {
+		fields, err := mas.AnalyzeSchema(ctx, collectionName, request)
+		if err != nil {
+			log.Printf("Warning: Could not analyze schema for %s: %v", collectionName, err)
+		}
+		collInfo.Fields = fields
 	}
-	collInfo.Fields = fields
 
-	sampleDoc, err := ma.getSampleDocument(ctx, collection)
-	if err != nil {
-		log.Printf("Warning: Could not get sample document for %s: %v", collectionName, err)
+	if request.Options.IncludeData {
+		sampleDoc, err := mas.getSampleDocument(ctx, collection)
+		if err != nil {
+			log.Printf("Warning: Could not get sample document for %s: %v", collectionName, err)
+		}
+		collInfo.SampleDocument = sampleDoc
 	}
-	collInfo.SampleDocument = sampleDoc
 
 	return collInfo, nil
 }
 
-func (ma *MongoAnalyzerImpl) GetCollectionNames(ctx context.Context) ([]string, error) {
-	db := ma.connector.GetDatabase("")
-	if db == nil {
-		return nil, fmt.Errorf("database connection not available")
-	}
+func (mas *MongoAnalyzerService) GetCollectionNames(ctx context.Context, request core.AnalysisRequest) ([]string, error) {
+	db := mas.connector.GetDatabase().(*mongo.Database)
 
 	names, err := db.ListCollectionNames(ctx, bson.D{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list collection names: %w", err)
 	}
 
+	if request.Options.MaxCollections > 0 && len(names) > request.Options.MaxCollections {
+		names = names[:request.Options.MaxCollections]
+	}
+
 	return names, nil
 }
 
-func (ma *MongoAnalyzerImpl) GetCollectionStats(ctx context.Context, collectionName string) (*types.MongoCollectionInfo, error) {
-	return ma.AnalyzeCollection(ctx, collectionName)
+func (mas *MongoAnalyzerService) GetCollectionStats(ctx context.Context, collectionName string, request core.AnalysisRequest) (*core.MongoCollectionInfo, error) {
+	return mas.AnalyzeCollection(ctx, collectionName, request)
 }
 
-func (ma *MongoAnalyzerImpl) AnalyzeSchema(ctx context.Context, collectionName string, sampleSize int) ([]types.MongoFieldInfo, error) {
-	db := ma.connector.GetDatabase("")
-	if db == nil {
-		return nil, fmt.Errorf("database connection not available")
-	}
-
+func (mas *MongoAnalyzerService) AnalyzeSchema(ctx context.Context, collectionName string, request core.AnalysisRequest) ([]core.MongoFieldInfo, error) {
+	db := mas.connector.GetDatabase().(*mongo.Database)
 	collection := db.Collection(collectionName)
+
+	sampleSize := request.Options.SampleSize
+	if sampleSize <= 0 {
+		sampleSize = 100
+	}
 
 	cursor, err := collection.Find(ctx, bson.D{}, options.Find().SetLimit(int64(sampleSize)))
 	if err != nil {
@@ -171,7 +204,7 @@ func (ma *MongoAnalyzerImpl) AnalyzeSchema(ctx context.Context, collectionName s
 	}
 	defer cursor.Close(ctx)
 
-	fieldMap := make(map[string]*types.MongoFieldInfo)
+	fieldMap := make(map[string]*core.MongoFieldInfo)
 	totalDocs := 0
 
 	for cursor.Next(ctx) {
@@ -181,10 +214,10 @@ func (ma *MongoAnalyzerImpl) AnalyzeSchema(ctx context.Context, collectionName s
 		}
 
 		totalDocs++
-		ma.analyzeDocument(doc, fieldMap, "")
+		mas.analyzeDocument(doc, fieldMap, "")
 	}
 
-	var fields []types.MongoFieldInfo
+	var fields []core.MongoFieldInfo
 	for _, field := range fieldMap {
 		field.Frequency = field.Frequency / float64(totalDocs)
 		fields = append(fields, *field)
@@ -193,12 +226,8 @@ func (ma *MongoAnalyzerImpl) AnalyzeSchema(ctx context.Context, collectionName s
 	return fields, nil
 }
 
-func (ma *MongoAnalyzerImpl) GetIndexes(ctx context.Context, collectionName string) ([]types.MongoIndexInfo, error) {
-	db := ma.connector.GetDatabase("")
-	if db == nil {
-		return nil, fmt.Errorf("database connection not available")
-	}
-
+func (mas *MongoAnalyzerService) GetIndexes(ctx context.Context, collectionName string, request core.AnalysisRequest) ([]core.MongoIndexInfo, error) {
+	db := mas.connector.GetDatabase().(*mongo.Database)
 	collection := db.Collection(collectionName)
 	cursor, err := collection.Indexes().List(ctx)
 	if err != nil {
@@ -206,15 +235,15 @@ func (ma *MongoAnalyzerImpl) GetIndexes(ctx context.Context, collectionName stri
 	}
 	defer cursor.Close(ctx)
 
-	var indexes []types.MongoIndexInfo
+	var indexes []core.MongoIndexInfo
 	for cursor.Next(ctx) {
 		var indexDoc bson.M
 		if err := cursor.Decode(&indexDoc); err != nil {
 			continue
 		}
 
-		index := types.MongoIndexInfo{
-			UsageStats: types.MongoIndexUsageStats{
+		index := core.MongoIndexInfo{
+			UsageStats: core.MongoIndexUsageStats{
 				Since: time.Now(),
 			},
 		}
@@ -245,11 +274,8 @@ func (ma *MongoAnalyzerImpl) GetIndexes(ctx context.Context, collectionName stri
 	return indexes, nil
 }
 
-func (ma *MongoAnalyzerImpl) GetDatabaseStats(ctx context.Context) (*types.MongoDatabaseStats, error) {
-	db := ma.connector.GetDatabase("")
-	if db == nil {
-		return nil, fmt.Errorf("database connection not available")
-	}
+func (mas *MongoAnalyzerService) GetDatabaseStats(ctx context.Context, request core.AnalysisRequest) (*core.MongoDatabaseStats, error) {
+	db := mas.connector.GetDatabase().(*mongo.Database)
 
 	var stats bson.M
 	err := db.RunCommand(ctx, bson.D{{"dbStats", 1}}).Decode(&stats)
@@ -257,8 +283,8 @@ func (ma *MongoAnalyzerImpl) GetDatabaseStats(ctx context.Context) (*types.Mongo
 		return nil, fmt.Errorf("failed to get database stats: %w", err)
 	}
 
-	dbStats := &types.MongoDatabaseStats{
-		Name: ma.connector.GetDatabaseName(),
+	dbStats := &core.MongoDatabaseStats{
+		Name: mas.connector.GetDatabaseName(),
 	}
 
 	if collections, ok := stats["collections"].(int32); ok {
@@ -302,11 +328,8 @@ func (ma *MongoAnalyzerImpl) GetDatabaseStats(ctx context.Context) (*types.Mongo
 	return dbStats, nil
 }
 
-func (ma *MongoAnalyzerImpl) GetPerformanceMetrics(ctx context.Context) (*types.MongoPerformanceMetrics, error) {
-	db := ma.connector.GetDatabase("")
-	if db == nil {
-		return nil, fmt.Errorf("database connection not available")
-	}
+func (mas *MongoAnalyzerService) GetPerformanceMetrics(ctx context.Context, request core.AnalysisRequest) (*core.PerformanceMetrics, error) {
+	db := mas.connector.GetDatabase().(*mongo.Database)
 
 	var serverStatus bson.M
 	err := db.RunCommand(ctx, bson.D{{"serverStatus", 1}}).Decode(&serverStatus)
@@ -314,7 +337,7 @@ func (ma *MongoAnalyzerImpl) GetPerformanceMetrics(ctx context.Context) (*types.
 		return nil, fmt.Errorf("failed to get server status: %w", err)
 	}
 
-	metrics := &types.MongoPerformanceMetrics{}
+	metrics := &core.PerformanceMetrics{}
 
 	if connections, ok := serverStatus["connections"].(bson.M); ok {
 		if current, ok := connections["current"].(int32); ok {
@@ -369,7 +392,7 @@ func (ma *MongoAnalyzerImpl) GetPerformanceMetrics(ctx context.Context) (*types.
 	return metrics, nil
 }
 
-func (ma *MongoAnalyzerImpl) getSampleDocument(ctx context.Context, collection *mongo.Collection) (map[string]interface{}, error) {
+func (mas *MongoAnalyzerService) getSampleDocument(ctx context.Context, collection *mongo.Collection) (map[string]interface{}, error) {
 	var doc bson.M
 	err := collection.FindOne(ctx, bson.D{}).Decode(&doc)
 	if err != nil {
@@ -381,7 +404,7 @@ func (ma *MongoAnalyzerImpl) getSampleDocument(ctx context.Context, collection *
 	return doc, nil
 }
 
-func (ma *MongoAnalyzerImpl) analyzeDocument(doc bson.M, fieldMap map[string]*types.MongoFieldInfo, prefix string) {
+func (mas *MongoAnalyzerService) analyzeDocument(doc bson.M, fieldMap map[string]*core.MongoFieldInfo, prefix string) {
 	for key, value := range doc {
 		fieldName := key
 		if prefix != "" {
@@ -390,7 +413,7 @@ func (ma *MongoAnalyzerImpl) analyzeDocument(doc bson.M, fieldMap map[string]*ty
 
 		field, exists := fieldMap[fieldName]
 		if !exists {
-			field = &types.MongoFieldInfo{
+			field = &core.MongoFieldInfo{
 				Name:        fieldName,
 				SampleValue: value,
 				Frequency:   0,
@@ -399,15 +422,15 @@ func (ma *MongoAnalyzerImpl) analyzeDocument(doc bson.M, fieldMap map[string]*ty
 		}
 
 		field.Frequency++
-		field.Type = ma.getFieldType(value)
+		field.Type = mas.getFieldType(value)
 
 		if nestedDoc, ok := value.(bson.M); ok {
-			ma.analyzeDocument(nestedDoc, fieldMap, fieldName)
+			mas.analyzeDocument(nestedDoc, fieldMap, fieldName)
 		}
 	}
 }
 
-func (ma *MongoAnalyzerImpl) getFieldType(value interface{}) string {
+func (mas *MongoAnalyzerService) getFieldType(value interface{}) string {
 	if value == nil {
 		return "null"
 	}
@@ -430,10 +453,10 @@ func (ma *MongoAnalyzerImpl) getFieldType(value interface{}) string {
 	}
 }
 
-func (ma *MongoAnalyzerImpl) convertCollectionsToTables(collections []types.MongoCollectionInfo) []types.TableInfo {
-	var tables []types.TableInfo
+func (mas *MongoAnalyzerService) convertCollectionsToTables(collections []core.MongoCollectionInfo) []core.TableInfo {
+	var tables []core.TableInfo
 	for _, coll := range collections {
-		table := types.TableInfo{
+		table := core.TableInfo{
 			Name:         coll.Name,
 			RowCount:     coll.DocumentCount,
 			Size:         fmt.Sprintf("%d bytes", coll.TotalSize),
@@ -441,10 +464,10 @@ func (ma *MongoAnalyzerImpl) convertCollectionsToTables(collections []types.Mong
 		}
 
 		for _, field := range coll.Fields {
-			column := types.ColumnInfo{
+			column := core.ColumnInfo{
 				Name:     field.Name,
 				DataType: field.Type,
-				DataProfile: types.DataProfile{
+				DataProfile: core.DataProfile{
 					Quality: 1.0,
 				},
 			}
@@ -452,7 +475,7 @@ func (ma *MongoAnalyzerImpl) convertCollectionsToTables(collections []types.Mong
 		}
 
 		for _, idx := range coll.Indexes {
-			index := types.IndexInfo{
+			index := core.IndexInfo{
 				Name:     idx.Name,
 				IsUnique: idx.IsUnique,
 				Type:     "btree",
@@ -468,12 +491,12 @@ func (ma *MongoAnalyzerImpl) convertCollectionsToTables(collections []types.Mong
 	return tables
 }
 
-func (ma *MongoAnalyzerImpl) generateInsights(collections []types.MongoCollectionInfo, stats *types.MongoDatabaseStats) []types.DatabaseInsight {
-	var insights []types.DatabaseInsight
+func (mas *MongoAnalyzerService) generateInsights(collections []core.MongoCollectionInfo, stats *core.MongoDatabaseStats) []core.DatabaseInsight {
+	var insights []core.DatabaseInsight
 
 	for _, coll := range collections {
 		if coll.DocumentCount > 1000000 {
-			insight := types.DatabaseInsight{
+			insight := core.DatabaseInsight{
 				Type:           "performance",
 				Severity:       "medium",
 				Title:          "Large Collection Detected",
@@ -486,7 +509,7 @@ func (ma *MongoAnalyzerImpl) generateInsights(collections []types.MongoCollectio
 		}
 
 		if len(coll.Indexes) <= 1 && coll.DocumentCount > 10000 {
-			insight := types.DatabaseInsight{
+			insight := core.DatabaseInsight{
 				Type:           "performance",
 				Severity:       "high",
 				Title:          "Missing Indexes on Large Collection",
@@ -502,7 +525,7 @@ func (ma *MongoAnalyzerImpl) generateInsights(collections []types.MongoCollectio
 	return insights
 }
 
-func (ma *MongoAnalyzerImpl) generateSummary(collections []types.MongoCollectionInfo, stats *types.MongoDatabaseStats) types.DatabaseSummary {
+func (mas *MongoAnalyzerService) generateSummary(collections []core.MongoCollectionInfo, stats *core.MongoDatabaseStats) core.DatabaseSummary {
 	var totalRows int64
 	var totalColumns int
 
@@ -511,10 +534,10 @@ func (ma *MongoAnalyzerImpl) generateSummary(collections []types.MongoCollection
 		totalColumns += len(coll.Fields)
 	}
 
-	healthScore := ma.calculateHealthScore(collections)
-	complexityScore := ma.calculateComplexityScore(collections)
+	healthScore := mas.calculateHealthScore(collections)
+	complexityScore := mas.calculateComplexityScore(collections)
 
-	return types.DatabaseSummary{
+	return core.DatabaseSummary{
 		TotalTables:     len(collections),
 		TotalColumns:    totalColumns,
 		TotalRows:       totalRows,
@@ -524,7 +547,7 @@ func (ma *MongoAnalyzerImpl) generateSummary(collections []types.MongoCollection
 	}
 }
 
-func (ma *MongoAnalyzerImpl) generateRecommendations(insights []types.DatabaseInsight) []string {
+func (mas *MongoAnalyzerService) generateRecommendations(insights []core.DatabaseInsight) []string {
 	var recommendations []string
 
 	highPriorityCount := 0
@@ -542,7 +565,7 @@ func (ma *MongoAnalyzerImpl) generateRecommendations(insights []types.DatabaseIn
 	return recommendations
 }
 
-func (ma *MongoAnalyzerImpl) calculateHealthScore(collections []types.MongoCollectionInfo) float64 {
+func (mas *MongoAnalyzerService) calculateHealthScore(collections []core.MongoCollectionInfo) float64 {
 	if len(collections) == 0 {
 		return 0.0
 	}
@@ -569,7 +592,7 @@ func (ma *MongoAnalyzerImpl) calculateHealthScore(collections []types.MongoColle
 	return totalScore / float64(len(collections))
 }
 
-func (ma *MongoAnalyzerImpl) calculateComplexityScore(collections []types.MongoCollectionInfo) float64 {
+func (mas *MongoAnalyzerService) calculateComplexityScore(collections []core.MongoCollectionInfo) float64 {
 	complexity := float64(len(collections)) * 0.1
 
 	for _, coll := range collections {

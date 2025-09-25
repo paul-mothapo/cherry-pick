@@ -2,9 +2,14 @@ package api
 
 import (
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
+	"github.com/cherry-pick/pkg/analytics"
+	"github.com/cherry-pick/pkg/api/analyzer"
 	"github.com/cherry-pick/pkg/api/loadbalancer"
+	"github.com/cherry-pick/pkg/analyzer"
 	"github.com/cherry-pick/pkg/loadbalancer"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -20,16 +25,22 @@ type Server struct {
 func NewServer(port string) *Server {
 	router := gin.Default()
 
+	allowedOrigins := getCORSOrigins()
+	allowedMethods := getCORSMethods()
+	allowedHeaders := getCORSHeaders()
+	exposeHeaders := getCORSExposeHeaders()
+	allowCredentials := getCORSAllowCredentials()
+	maxAge := getCORSMaxAge()
+
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
+		AllowOrigins:     allowedOrigins,
+		AllowMethods:     allowedMethods,
+		AllowHeaders:     allowedHeaders,
+		ExposeHeaders:    exposeHeaders,
+		AllowCredentials: allowCredentials,
+		MaxAge:           maxAge,
 	}))
 
-	// Initialize load balancer
 	lb := loadbalancer.NewLoadBalancer("./reports")
 	analyzer := loadbalancer.NewURLAnalyzer()
 
@@ -40,7 +51,6 @@ func NewServer(port string) *Server {
 		urlAnalyzer:  analyzer,
 	}
 
-	// Initialize analytics
 	InitializeAnalytics()
 
 	server.setupRoutes()
@@ -110,18 +120,14 @@ func (s *Server) setupRoutes() {
 		loadbalancer.SetupRoutes(api, loadBalancerHandler)
 
 		// @Analytics routes
-		analytics := api.Group("/analytics")
-		{
-			analytics.POST("/track/pageview", s.trackPageView)
-			analytics.POST("/track/behavior", s.trackBehavioralPattern)
-			analytics.GET("/realtime", s.getRealTimeAnalytics)
-			analytics.GET("/journey/:sessionId", s.getUserJourney)
-			analytics.GET("/funnel", s.getFunnelAnalysis)
-			analytics.GET("/insights", s.getAnalyticsInsights)
-			analytics.GET("/report", s.getAnalyticsReport)
-			analytics.GET("/dashboard", s.getAnalyticsDashboard)
-			analytics.GET("/stream", s.subscribeToRealTimeAnalytics)
-		}
+		analyticsService := analytics.NewAnalytics()
+		analyticsHandler := analytics.NewHandler(analyticsService.GetService())
+		analytics.SetupRoutes(api, analyticsHandler)
+
+		// @Analyzer routes
+		analyzerService := analyzer.NewAnalyzer()
+		analyzerHandler := analyzer.NewHandler(analyzerService.GetService())
+		analyzer.SetupRoutes(api, analyzerHandler)
 	}
 
 	s.router.Static("/static", "./web/dist/assets")
@@ -162,4 +168,54 @@ func (s *Server) sendError(c *gin.Context, statusCode int, err error, message ..
 		response.Message = message[0]
 	}
 	c.JSON(statusCode, response)
+}
+
+func getCORSOrigins() []string {
+	origins := os.Getenv("CORS_ALLOWED_ORIGINS")
+	if origins == "" {
+		return []string{"http://localhost:3000", "http://localhost:8080"}
+	}
+	return strings.Split(origins, ",")
+}
+
+func getCORSMethods() []string {
+	methods := os.Getenv("CORS_ALLOWED_METHODS")
+	if methods == "" {
+		return []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"}
+	}
+	return strings.Split(methods, ",")
+}
+
+func getCORSHeaders() []string {
+	headers := os.Getenv("CORS_ALLOWED_HEADERS")
+	if headers == "" {
+		return []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With"}
+	}
+	return strings.Split(headers, ",")
+}
+
+func getCORSExposeHeaders() []string {
+	headers := os.Getenv("CORS_EXPOSE_HEADERS")
+	if headers == "" {
+		return []string{"Content-Length", "Content-Type"}
+	}
+	return strings.Split(headers, ",")
+}
+
+func getCORSAllowCredentials() bool {
+	credentials := os.Getenv("CORS_ALLOW_CREDENTIALS")
+	return credentials == "true" || credentials == "1"
+}
+
+func getCORSMaxAge() time.Duration {
+	maxAge := os.Getenv("CORS_MAX_AGE")
+	if maxAge == "" {
+		return 12 * time.Hour
+	}
+	
+	if duration, err := time.ParseDuration(maxAge); err == nil {
+		return duration
+	}
+	
+	return 12 * time.Hour
 }

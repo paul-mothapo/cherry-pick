@@ -34,3 +34,7 @@ Thumbs.db
 
 # web
 web
+
+# env
+.env
+!.env.example
